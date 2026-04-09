@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     const CLIENTS = {
       wisper: {
         location_id: "8005",
-        landing_page: "wisper-quote",
+        landing_page: "quote",
         type: "direct",
         url: "https://wisperisp.com/request-a-quote/#form"
       }
