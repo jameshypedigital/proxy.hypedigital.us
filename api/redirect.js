@@ -1,6 +1,35 @@
 export default async function handler(req, res) {
   try {
-    const { ...query } = req.query;
+    const { client, slug, ...query } = req.query;
+
+    if (!client) {
+      return res.status(400).json({
+        ok: false,
+        error: "Missing client"
+      });
+    }
+
+    // ===================================
+    // CLIENT CONFIG (ONLY WHAT YOU NEED)
+    // ===================================
+
+    const CLIENTS = {
+      wisper: {
+        location_id: "8005",
+        landing_page: "wisper-quote",
+        type: "direct",
+        url: "https://wisperisp.com/request-a-quote/#form"
+      }
+    };
+
+    const config = CLIENTS[String(client).toLowerCase()];
+
+    if (!config) {
+      return res.status(400).json({
+        ok: false,
+        error: "Unknown client"
+      });
+    }
 
     // ===================================
     // UTM NORMALIZATION
@@ -14,17 +43,17 @@ export default async function handler(req, res) {
       utm_ad: query.utm_ad || null,
       fbclid: query.fbclid || null,
       gclid: query.gclid || null,
-      landing_page: "wisper-quote"
+      landing_page: config.landing_page
     };
 
     // ===================================
-    // DESTINATION URL (WISPER)
+    // BUILD DESTINATION
     // ===================================
 
-    let finalUrl = "https://wisperisp.com/request-a-quote/#form";
+    let finalUrl = config.url;
 
     // ===================================
-    // APPEND UTMs
+    // APPEND UTMs (handles # correctly)
     // ===================================
 
     const cleanParams = Object.entries(utm)
@@ -37,13 +66,20 @@ export default async function handler(req, res) {
     const paramString = new URLSearchParams(cleanParams).toString();
 
     if (paramString) {
-      finalUrl += finalUrl.includes("?")
-        ? `&${paramString}`
-        : `?${paramString}`;
+      const hasHash = finalUrl.includes("#");
+
+      if (hasHash) {
+        const [baseUrl, hash] = finalUrl.split("#");
+        finalUrl = `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}${paramString}#${hash}`;
+      } else {
+        finalUrl += finalUrl.includes("?")
+          ? `&${paramString}`
+          : `?${paramString}`;
+      }
     }
 
     // ===================================
-    // SEND TO N8N (TRACK CLICK)
+    // SEND TO N8N
     // ===================================
 
     await fetch("https://dashtraq.app.n8n.cloud/webhook-test/redirect-track", {
@@ -52,15 +88,13 @@ export default async function handler(req, res) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
+        club: config.location_id,
         client: "wisper",
-        utm: utm,
+        slug: slug || null,
+        utm,
         timestamp: Date.now()
       })
     });
-
-    // ===================================
-    // REDIRECT
-    // ===================================
 
     return res.redirect(302, finalUrl);
 
