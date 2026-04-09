@@ -82,7 +82,7 @@ export default async function handler(req, res) {
     // SEND TO N8N
     // ===================================
 
-    await fetch("https://dashtraq.app.n8n.cloud/webhook-test/redirect-track", {
+    await fetch("https://dashtraq.app.n8n.cloud/webhook/redirect-track", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
