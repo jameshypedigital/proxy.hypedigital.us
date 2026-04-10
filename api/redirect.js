@@ -1,33 +1,40 @@
 export default async function handler(req, res) {
   try {
-    const { client, slug, ...query } = req.query;
-
-    if (!client) {
-      return res.status(400).json({
-        ok: false,
-        error: "Missing client"
-      });
-    }
+    const { client, location_id, slug, ...query } = req.query;
 
     // ===================================
-    // CLIENT CONFIG (ONLY WHAT YOU NEED)
+    // SUPPORT BOTH client AND location_id
     // ===================================
 
     const CLIENTS = {
       wisper: {
-        location_id: "8005",
-        landing_page: "quote",
-        type: "direct",
+        location_id: 8005,
+        landing_page: "request-a-quote",
         url: "https://wisperisp.com/request-a-quote/#form"
       }
     };
 
-    const config = CLIENTS[String(client).toLowerCase()];
+    let config;
 
-    if (!config) {
+    if (client) {
+      config = CLIENTS[String(client).toLowerCase()];
+      if (!config) {
+        return res.status(400).json({
+          ok: false,
+          error: "Unknown client"
+        });
+      }
+    } else if (location_id) {
+      // allow direct location usage (future-proof)
+      config = {
+        location_id: Number(location_id),
+        landing_page: slug || "unknown",
+        url: "https://wisperisp.com/request-a-quote/#form"
+      };
+    } else {
       return res.status(400).json({
         ok: false,
-        error: "Unknown client"
+        error: "Missing client or location_id"
       });
     }
 
@@ -43,7 +50,7 @@ export default async function handler(req, res) {
       utm_ad: query.utm_ad || null,
       fbclid: query.fbclid || null,
       gclid: query.gclid || null,
-      landing_page: config.landing_page
+      landing_page: slug || config.landing_page
     };
 
     // ===================================
@@ -88,11 +95,11 @@ export default async function handler(req, res) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        club: config.location_id,
-        client: "wisper",
-        slug: slug || null,
+        location_id: config.location_id,
+        client: client || null,
+        slug: slug || config.landing_page,
         utm,
-        timestamp: Date.now()
+        timestamp: new Date().toISOString()
       })
     });
 
