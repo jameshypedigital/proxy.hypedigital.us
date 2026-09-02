@@ -5,6 +5,7 @@ export default async function handler(req, res) {
       client,
       location_id,
       slug,
+
       utm_source,
       utm_medium,
       utm_campaign,
@@ -12,13 +13,11 @@ export default async function handler(req, res) {
       utm_term,
       utm_adgroup,
       utm_adid,
+
       gclid,
+
       ...otherParams
     } = req.query;
-
-    // ===================================
-    // REQUIRE LPURL
-    // ===================================
 
     if (!lpurl) {
       return res.status(400).json({
@@ -27,14 +26,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // ===================================
-    // VALIDATE LPURL
-    // ===================================
-
-    let destination;
-
     try {
-      destination = new URL(lpurl);
+      const destination = new URL(lpurl);
 
       if (
         destination.protocol !== "https:" &&
@@ -48,10 +41,6 @@ export default async function handler(req, res) {
         error: "Invalid lpurl"
       });
     }
-
-    // ===================================
-    // RESOLVE LOCATION / CLIENT
-    // ===================================
 
     const CLIENTS = {
       wisper: {
@@ -74,15 +63,11 @@ export default async function handler(req, res) {
       }
 
       resolvedLocationId =
-        resolvedLocationId || config.location_id;
+        resolvedLocationId || String(config.location_id);
 
       resolvedSlug =
         resolvedSlug || config.landing_page;
     }
-
-    // ===================================
-    // NORMALIZE GOOGLE ATTRIBUTION
-    // ===================================
 
     const utm = {
       utm_source: utm_source || "google",
@@ -96,10 +81,6 @@ export default async function handler(req, res) {
       landing_page: resolvedSlug
     };
 
-    // ===================================
-    // SEND TO N8N
-    // ===================================
-
     try {
       const response = await fetch(
         "https://dashtraq.app.n8n.cloud/webhook/marketing_data",
@@ -112,12 +93,16 @@ export default async function handler(req, res) {
             location_id: resolvedLocationId
               ? Number(resolvedLocationId)
               : null,
+
             client: client || null,
             slug: resolvedSlug,
             utm,
+
             lpurl,
             source: "google",
+
             other_params: otherParams,
+
             timestamp: new Date().toISOString()
           })
         }
@@ -125,21 +110,16 @@ export default async function handler(req, res) {
 
       if (!response.ok) {
         console.error(
-          "n8n tracking returned:",
+          "n8n tracking returned status:",
           response.status
         );
       }
     } catch (trackingError) {
-      // Tracking failure should NOT block redirect
       console.error(
-        "Tracking error:",
+        "Google tracking failed:",
         trackingError
       );
     }
-
-    // ===================================
-    // TRANSPARENT GOOGLE REDIRECT
-    // ===================================
 
     return res.redirect(302, lpurl);
 
