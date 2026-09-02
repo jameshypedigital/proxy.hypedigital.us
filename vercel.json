@@ -3,6 +3,14 @@
     {
       "src": "/",
       "dest": "/api/redirect"
+    },
+    {
+      "src": "/api/redirect",
+      "dest": "/api/redirect.js"
+    },
+    {
+      "src": "/api/bridge",
+      "dest": "/api/bridge.js"
     }
   ]
 }
